@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix Image Effect</title>
+    <title>Matrix Video Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ccapture.js/1.1.0/CCapture.all.min.js"></script>
     <style>
         body {
             background-color: black;
@@ -30,17 +31,31 @@
             padding: 10px;
             cursor: pointer;
         }
+        #download {
+            display: none;
+            position: relative;
+            z-index: 10;
+            margin-top: 20px;
+            font-size: 18px;
+            color: white;
+            background: #00ff00;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
     <input type="file" id="upload" accept="image/*">
+    <button id="download">تحميل الفيديو</button>
     <canvas id="canvas"></canvas>
 
     <script>
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
         const upload = document.getElementById("upload");
+        const downloadBtn = document.getElementById("download");
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -54,12 +69,27 @@
                     img.src = e.target.result;
                     img.onload = function() {
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        startMatrixEffect();
+                        applyMatrixEffect();
                     };
                 };
                 reader.readAsDataURL(file);
             }
         });
+
+        function applyMatrixEffect() {
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                data[i] = avg * 0.1;
+                data[i + 1] = avg * 1.5;
+                data[i + 2] = avg * 0.1;
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            startMatrixEffect();
+        }
 
         function startMatrixEffect() {
             const letters = "010101010101010101010101";
@@ -83,7 +113,21 @@
                 }
             }
 
-            setInterval(drawMatrix, 50);
+            let capturer = new CCapture({ format: 'webm', framerate: 30 });
+            capturer.start();
+
+            let frames = 0;
+            let interval = setInterval(() => {
+                drawMatrix();
+                capturer.capture(canvas);
+                frames++;
+                if (frames >= 150) { // 5 ثوانٍ عند 30 إطار في الثانية
+                    clearInterval(interval);
+                    capturer.stop();
+                    capturer.save();
+                    downloadBtn.style.display = "block";
+                }
+            }, 33);
         }
     </script>
 
